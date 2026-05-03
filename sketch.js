@@ -108,22 +108,20 @@ function setupControls() {
     });
 }
 
-function mousePressed() {
-    paintAtPointer();
+function mousePressed(event) {
+    paintAtPointer(event);
 }
 
-function mouseDragged() {
-    paintAtPointer();
+function mouseDragged(event) {
+    paintAtPointer(event);
 }
 
-function touchStarted() {
-    paintAtPointer();
-    return false;
+function touchStarted(event) {
+    return paintAtPointer(event) ? false : true;
 }
 
-function touchMoved() {
-    paintAtPointer();
-    return false;
+function touchMoved(event) {
+    return paintAtPointer(event) ? false : true;
 }
 
 function keyPressed() {
@@ -159,9 +157,9 @@ function selectTool(tool) {
     });
 }
 
-function paintAtPointer() {
-    if (!pointerInCanvas() || pointerOverToolbar()) {
-        return;
+function paintAtPointer(event) {
+    if (!pointerInCanvas() || pointerOverToolbar(event)) {
+        return false;
     }
 
     let mouseCol = floor(mouseX / w);
@@ -202,6 +200,8 @@ function paintAtPointer() {
             hueValue = 34;
         }
     }
+
+    return true;
 }
 
 function getBrushHue() {
@@ -379,9 +379,12 @@ function pointerInCanvas() {
     return mouseX >= 0 && mouseX < width && mouseY >= 0 && mouseY < height;
 }
 
-function pointerOverToolbar() {
+function pointerOverToolbar(event) {
     if (!toolbar) {
         return false;
+    }
+    if (event && event.target && event.target.closest && event.target.closest("#toolbar")) {
+        return true;
     }
     let bounds = toolbar.getBoundingClientRect();
     return mouseX >= bounds.left && mouseX <= bounds.right && mouseY >= bounds.top && mouseY <= bounds.bottom;
