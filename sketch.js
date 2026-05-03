@@ -30,6 +30,7 @@ let speedInput;
 let speedValue;
 let pauseButton;
 let particleCountEl;
+let toolbarDrag = null;
 
 function withinCols(i) {
     return i >= 0 && i <= cols - 1;
@@ -40,7 +41,7 @@ function withinRows(j) {
 }
 
 function setup() {
-    const canvas = createCanvas(windowWidth, windowHeight);
+    const canvas = createCanvas(getViewportWidth(), getViewportHeight());
     canvas.parent("canvas-host");
     colorMode(HSB, 360, 255, 255, 255);
 
@@ -48,6 +49,14 @@ function setup() {
     rows = floor(height / w);
     grid = make2DArray(cols, rows);
     setupControls();
+}
+
+function getViewportWidth() {
+    return window.innerWidth || document.documentElement.clientWidth;
+}
+
+function getViewportHeight() {
+    return window.innerHeight || document.documentElement.clientHeight;
 }
 
 function setupControls() {
@@ -58,6 +67,7 @@ function setupControls() {
     speedValue = document.getElementById("sim-speed-value");
     pauseButton = document.getElementById("pause-toggle");
     particleCountEl = document.getElementById("particle-count");
+    setupToolbarDrag();
 
     document.querySelectorAll("[data-tool]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -106,6 +116,50 @@ function setupControls() {
         waterCount = 0;
         updateStats();
     });
+}
+
+function setupToolbarDrag() {
+    let handle = toolbar.querySelector(".brand");
+
+    handle.addEventListener("pointerdown", (event) => {
+        let bounds = toolbar.getBoundingClientRect();
+        toolbarDrag = {
+            offsetX: event.clientX - bounds.left,
+            offsetY: event.clientY - bounds.top
+        };
+        toolbar.setPointerCapture(event.pointerId);
+        event.preventDefault();
+    });
+
+    toolbar.addEventListener("pointermove", (event) => {
+        if (!toolbarDrag) {
+            return;
+        }
+
+        moveToolbar(event.clientX - toolbarDrag.offsetX, event.clientY - toolbarDrag.offsetY);
+    });
+
+    toolbar.addEventListener("pointerup", (event) => {
+        toolbarDrag = null;
+        if (toolbar.hasPointerCapture(event.pointerId)) {
+            toolbar.releasePointerCapture(event.pointerId);
+        }
+    });
+
+    toolbar.addEventListener("pointercancel", () => {
+        toolbarDrag = null;
+    });
+}
+
+function moveToolbar(left, top) {
+    let bounds = toolbar.getBoundingClientRect();
+    let maxLeft = Math.max(8, getViewportWidth() - bounds.width - 8);
+    let maxTop = Math.max(8, getViewportHeight() - bounds.height - 8);
+
+    toolbar.style.left = `${constrain(left, 8, maxLeft)}px`;
+    toolbar.style.top = `${constrain(top, 8, maxTop)}px`;
+    toolbar.style.right = "auto";
+    toolbar.style.bottom = "auto";
 }
 
 function mousePressed(event) {
@@ -260,6 +314,9 @@ function updateGrid() {
 
         for (let i = start; i !== end; i += step) {
             let state = grid[i][j];
+            if (nextGrid[i][j] !== 0) {
+                continue;
+            }
             if (state === -1) {
                 nextGrid[i][j] = state;
                 continue;
@@ -285,22 +342,41 @@ function updateGrid() {
 }
 
 function updateSandCell(i, j, state, nextGrid) {
-    if (canMoveTo(i, j + 1, nextGrid)) {
-        nextGrid[i][j + 1] = state;
+    if (tryMoveSandTo(i, j, i, j + 1, state, nextGrid)) {
         return;
     }
 
     let firstDir = random(1) < 0.5 ? -1 : 1;
-    if (canMoveTo(i + firstDir, j + 1, nextGrid)) {
-        nextGrid[i + firstDir][j + 1] = state;
+    if (tryMoveSandTo(i, j, i + firstDir, j + 1, state, nextGrid)) {
         return;
     }
-    if (canMoveTo(i - firstDir, j + 1, nextGrid)) {
-        nextGrid[i - firstDir][j + 1] = state;
+    if (tryMoveSandTo(i, j, i - firstDir, j + 1, state, nextGrid)) {
         return;
     }
 
     nextGrid[i][j] = state;
+}
+
+function tryMoveSandTo(fromCol, fromRow, toCol, toRow, state, nextGrid) {
+    if (!withinCols(toCol) || !withinRows(toRow)) {
+        return false;
+    }
+
+    let target = grid[toCol][toRow];
+    if (target === 0 && nextGrid[toCol][toRow] === 0) {
+        nextGrid[toCol][toRow] = state;
+        return true;
+    }
+
+    if (target === -2 && (nextGrid[toCol][toRow] === 0 || nextGrid[toCol][toRow] === -2)) {
+        nextGrid[toCol][toRow] = state;
+        if (nextGrid[fromCol][fromRow] === 0) {
+            nextGrid[fromCol][fromRow] = -2;
+        }
+        return true;
+    }
+
+    return false;
 }
 
 function updateWaterCell(i, j, nextGrid) {
@@ -395,7 +471,7 @@ function windowResized() {
     let oldCols = cols;
     let oldRows = rows;
 
-    resizeCanvas(windowWidth, windowHeight);
+    resizeCanvas(getViewportWidth(), getViewportHeight());
     cols = floor(width / w);
     rows = floor(height / w);
     grid = make2DArray(cols, rows);
@@ -405,4 +481,7 @@ function windowResized() {
             grid[i][j] = oldGrid[i][j];
         }
     }
+
+    let bounds = toolbar.getBoundingClientRect();
+    moveToolbar(bounds.left, bounds.top);
 }
