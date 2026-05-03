@@ -1,108 +1,147 @@
-function make2DArray(cols, rows) {
-    let arr = new Array(cols);
-    for (let i = 0; i < arr.length; i++) {
-        arr[i] = new Array(rows);
-        for (let j = 0; j < arr[i].length; j++) {
-            arr[i][j] = 0;
-        }
-    }
-    return arr;
-}
+const CELL_SIZE = 4;
+const EMPTY = 0;
+const WALL = 1;
+const WATER = 2;
+const SAND = 3;
+
+const TOOLS = {
+    sand: SAND,
+    water: WATER,
+    wall: WALL,
+    erase: EMPTY
+};
+
+const MATERIALS = {
+    [EMPTY]: { name: "empty" },
+    [WALL]: { name: "wall" },
+    [WATER]: { name: "water" },
+    [SAND]: { name: "sand" }
+};
 
 let grid;
-let w = 4;
 let cols;
 let rows;
-let hueValue = 200;
+
 let brushSize = 5;
 let currentTool = "sand";
 let colorModeName = "rainbow";
+let hueValue = 200;
 let paused = false;
 let simulationSpeed = 1;
-let particleCount = 0;
-let waterCount = 0;
-let wallCount = 0;
 
-let toolbar;
-let sizeInput;
-let sizeValue;
-let speedInput;
-let speedValue;
-let pauseButton;
-let particleCountEl;
+let counts = {
+    [SAND]: 0,
+    [WATER]: 0,
+    [WALL]: 0
+};
+
+let ui = {};
 let toolbarDrag = null;
 
-function withinCols(i) {
-    return i >= 0 && i <= cols - 1;
+function makeCell(type = EMPTY, hue = 0) {
+    return { type, hue };
 }
 
-function withinRows(j) {
-    return j >= 0 && j <= rows - 1;
+function makeGrid(nextCols, nextRows) {
+    let next = new Array(nextCols);
+    for (let col = 0; col < nextCols; col++) {
+        next[col] = new Array(nextRows);
+        for (let row = 0; row < nextRows; row++) {
+            next[col][row] = makeCell();
+        }
+    }
+    return next;
 }
 
 function setup() {
-    const canvas = createCanvas(getViewportWidth(), getViewportHeight());
+    const canvas = createCanvas(viewportWidth(), viewportHeight());
     canvas.parent("canvas-host");
     colorMode(HSB, 360, 255, 255, 255);
 
-    cols = floor(width / w);
-    rows = floor(height / w);
-    grid = make2DArray(cols, rows);
+    resetGrid();
     setupControls();
 }
 
-function getViewportWidth() {
+function draw() {
+    background(218, 28, 7);
+    drawCells();
+
+    if (!paused) {
+        for (let i = 0; i < simulationSpeed; i++) {
+            updateGrid();
+        }
+    }
+
+    drawBrushPreview();
+    updateStats();
+}
+
+function resetGrid() {
+    cols = floor(width / CELL_SIZE);
+    rows = floor(height / CELL_SIZE);
+    grid = makeGrid(cols, rows);
+}
+
+function viewportWidth() {
     return window.innerWidth || document.documentElement.clientWidth;
 }
 
-function getViewportHeight() {
+function viewportHeight() {
     return window.innerHeight || document.documentElement.clientHeight;
 }
 
-function setupControls() {
-    toolbar = document.getElementById("toolbar");
-    sizeInput = document.getElementById("brush-size");
-    sizeValue = document.getElementById("brush-size-value");
-    speedInput = document.getElementById("sim-speed");
-    speedValue = document.getElementById("sim-speed-value");
-    pauseButton = document.getElementById("pause-toggle");
-    particleCountEl = document.getElementById("particle-count");
-    setupToolbarDrag();
+function insideGrid(col, row) {
+    return col >= 0 && col < cols && row >= 0 && row < rows;
+}
 
+function setupControls() {
+    ui.toolbar = document.getElementById("toolbar");
+    ui.sizeInput = document.getElementById("brush-size");
+    ui.sizeValue = document.getElementById("brush-size-value");
+    ui.speedInput = document.getElementById("sim-speed");
+    ui.speedValue = document.getElementById("sim-speed-value");
+    ui.pauseButton = document.getElementById("pause-toggle");
+    ui.stats = document.getElementById("particle-count");
+
+    setupToolButtons();
+    setupColorButtons();
+    setupControlInputs();
+    setupToolbarDrag();
+}
+
+function setupToolButtons() {
     document.querySelectorAll("[data-tool]").forEach((button) => {
         button.addEventListener("click", () => {
-            currentTool = button.dataset.tool;
-            document.querySelectorAll("[data-tool]").forEach((item) => {
-                item.classList.toggle("active", item === button);
-            });
+            selectTool(button.dataset.tool);
         });
     });
+}
 
+function setupColorButtons() {
     document.querySelectorAll("[data-color-mode]").forEach((button) => {
         button.addEventListener("click", () => {
             colorModeName = button.dataset.colorMode;
             if (colorModeName === "warm") {
                 hueValue = 38;
             }
-            document.querySelectorAll("[data-color-mode]").forEach((item) => {
-                item.classList.toggle("active", item === button);
-            });
+            setActiveButton("[data-color-mode]", button);
         });
     });
+}
 
-    sizeInput.addEventListener("input", () => {
-        brushSize = Number(sizeInput.value);
-        sizeValue.textContent = brushSize;
+function setupControlInputs() {
+    ui.sizeInput.addEventListener("input", () => {
+        brushSize = Number(ui.sizeInput.value);
+        ui.sizeValue.textContent = brushSize;
     });
 
-    speedInput.addEventListener("input", () => {
-        simulationSpeed = Number(speedInput.value);
-        speedValue.textContent = `${simulationSpeed}x`;
+    ui.speedInput.addEventListener("input", () => {
+        simulationSpeed = Number(ui.speedInput.value);
+        ui.speedValue.textContent = `${simulationSpeed}x`;
     });
 
-    pauseButton.addEventListener("click", () => {
-        paused = !paused;
-        pauseButton.textContent = paused ? "Resume" : "Pause";
+    ui.pauseButton.addEventListener("click", () => {
+        togglePaused();
     });
 
     document.getElementById("step-grid").addEventListener("click", () => {
@@ -110,56 +149,69 @@ function setupControls() {
     });
 
     document.getElementById("clear-grid").addEventListener("click", () => {
-        grid = make2DArray(cols, rows);
-        particleCount = 0;
-        wallCount = 0;
-        waterCount = 0;
+        resetGrid();
+        resetCounts();
         updateStats();
     });
 }
 
 function setupToolbarDrag() {
-    let handle = toolbar.querySelector(".brand");
+    let handle = ui.toolbar.querySelector(".brand");
 
     handle.addEventListener("pointerdown", (event) => {
-        let bounds = toolbar.getBoundingClientRect();
+        let bounds = ui.toolbar.getBoundingClientRect();
         toolbarDrag = {
             offsetX: event.clientX - bounds.left,
             offsetY: event.clientY - bounds.top
         };
-        toolbar.setPointerCapture(event.pointerId);
+        ui.toolbar.setPointerCapture(event.pointerId);
         event.preventDefault();
     });
 
-    toolbar.addEventListener("pointermove", (event) => {
+    ui.toolbar.addEventListener("pointermove", (event) => {
         if (!toolbarDrag) {
             return;
         }
-
         moveToolbar(event.clientX - toolbarDrag.offsetX, event.clientY - toolbarDrag.offsetY);
     });
 
-    toolbar.addEventListener("pointerup", (event) => {
+    ui.toolbar.addEventListener("pointerup", (event) => {
         toolbarDrag = null;
-        if (toolbar.hasPointerCapture(event.pointerId)) {
-            toolbar.releasePointerCapture(event.pointerId);
+        if (ui.toolbar.hasPointerCapture(event.pointerId)) {
+            ui.toolbar.releasePointerCapture(event.pointerId);
         }
     });
 
-    toolbar.addEventListener("pointercancel", () => {
+    ui.toolbar.addEventListener("pointercancel", () => {
         toolbarDrag = null;
     });
 }
 
 function moveToolbar(left, top) {
-    let bounds = toolbar.getBoundingClientRect();
-    let maxLeft = Math.max(8, getViewportWidth() - bounds.width - 8);
-    let maxTop = Math.max(8, getViewportHeight() - bounds.height - 8);
+    let bounds = ui.toolbar.getBoundingClientRect();
+    let maxLeft = Math.max(8, viewportWidth() - bounds.width - 8);
+    let maxTop = Math.max(8, viewportHeight() - bounds.height - 8);
 
-    toolbar.style.left = `${constrain(left, 8, maxLeft)}px`;
-    toolbar.style.top = `${constrain(top, 8, maxTop)}px`;
-    toolbar.style.right = "auto";
-    toolbar.style.bottom = "auto";
+    ui.toolbar.style.left = `${constrain(left, 8, maxLeft)}px`;
+    ui.toolbar.style.top = `${constrain(top, 8, maxTop)}px`;
+    ui.toolbar.style.right = "auto";
+    ui.toolbar.style.bottom = "auto";
+}
+
+function selectTool(tool) {
+    currentTool = tool;
+    setActiveButton("[data-tool]", document.querySelector(`[data-tool="${tool}"]`));
+}
+
+function setActiveButton(selector, activeButton) {
+    document.querySelectorAll(selector).forEach((button) => {
+        button.classList.toggle("active", button === activeButton);
+    });
+}
+
+function togglePaused() {
+    paused = !paused;
+    ui.pauseButton.textContent = paused ? "Resume" : "Pause";
 }
 
 function mousePressed(event) {
@@ -180,35 +232,20 @@ function touchMoved(event) {
 
 function keyPressed() {
     if (key === " ") {
-        paused = !paused;
-        pauseButton.textContent = paused ? "Resume" : "Pause";
-    }
-    if (key === "c" || key === "C") {
-        grid = make2DArray(cols, rows);
-        particleCount = 0;
-        waterCount = 0;
-        wallCount = 0;
+        togglePaused();
+    } else if (key === "c" || key === "C") {
+        resetGrid();
+        resetCounts();
         updateStats();
-    }
-    if (key === "1") {
+    } else if (key === "1") {
         selectTool("sand");
-    }
-    if (key === "2") {
+    } else if (key === "2") {
         selectTool("water");
-    }
-    if (key === "3") {
+    } else if (key === "3") {
         selectTool("wall");
-    }
-    if (key === "4") {
+    } else if (key === "4") {
         selectTool("erase");
     }
-}
-
-function selectTool(tool) {
-    currentTool = tool;
-    document.querySelectorAll("[data-tool]").forEach((button) => {
-        button.classList.toggle("active", button.dataset.tool === tool);
-    });
 }
 
 function paintAtPointer(event) {
@@ -216,46 +253,52 @@ function paintAtPointer(event) {
         return false;
     }
 
-    let mouseCol = floor(mouseX / w);
-    let mouseRow = floor(mouseY / w);
+    let centerCol = floor(mouseX / CELL_SIZE);
+    let centerRow = floor(mouseY / CELL_SIZE);
     let extent = floor(brushSize / 2);
 
-    for (let i = -extent; i <= extent; i++) {
-        for (let j = -extent; j <= extent; j++) {
-            let distanceFromCenter = dist(0, 0, i, j);
-            if (distanceFromCenter > extent + 0.35) {
+    for (let offsetCol = -extent; offsetCol <= extent; offsetCol++) {
+        for (let offsetRow = -extent; offsetRow <= extent; offsetRow++) {
+            if (dist(0, 0, offsetCol, offsetRow) > extent + 0.35) {
                 continue;
             }
 
-            let col = mouseCol + i;
-            let row = mouseRow + j;
-            if (!withinCols(col) || !withinRows(row)) {
-                continue;
-            }
-
-            if (currentTool === "erase") {
-                grid[col][row] = 0;
-            } else if (currentTool === "water") {
-                grid[col][row] = -2;
-            } else if (currentTool === "wall") {
-                grid[col][row] = -1;
-            } else if (random(1) < 0.78) {
-                grid[col][row] = getBrushHue();
-            }
+            paintCell(centerCol + offsetCol, centerRow + offsetRow);
         }
     }
 
     if (currentTool === "sand") {
-        hueValue += colorModeName === "rainbow" ? 1 : 0.8;
-        if (colorModeName === "rainbow" && hueValue > 360) {
-            hueValue = 1;
-        }
-        if (colorModeName === "warm" && hueValue > 52) {
-            hueValue = 34;
-        }
+        advanceBrushHue();
     }
 
     return true;
+}
+
+function paintCell(col, row) {
+    if (!insideGrid(col, row)) {
+        return;
+    }
+
+    let type = TOOLS[currentTool];
+    if (type === EMPTY) {
+        grid[col][row] = makeCell();
+    } else if (type === SAND) {
+        if (random(1) < 0.78) {
+            grid[col][row] = makeCell(SAND, getBrushHue());
+        }
+    } else {
+        grid[col][row] = makeCell(type);
+    }
+}
+
+function advanceBrushHue() {
+    hueValue += colorModeName === "rainbow" ? 1 : 0.8;
+    if (colorModeName === "rainbow" && hueValue > 360) {
+        hueValue = 1;
+    }
+    if (colorModeName === "warm" && hueValue > 52) {
+        hueValue = 34;
+    }
 }
 
 function getBrushHue() {
@@ -263,115 +306,106 @@ function getBrushHue() {
     return (hueValue + hueJitter + 360) % 360;
 }
 
-function draw() {
-    background(218, 28, 7);
-    drawParticles();
+function drawCells() {
+    resetCounts();
+    noStroke();
 
-    if (!paused) {
-        for (let i = 0; i < simulationSpeed; i++) {
-            updateGrid();
+    for (let col = 0; col < cols; col++) {
+        for (let row = 0; row < rows; row++) {
+            let cell = grid[col][row];
+            if (cell.type === EMPTY) {
+                continue;
+            }
+
+            counts[cell.type]++;
+            drawCell(cell, col, row);
         }
     }
-
-    drawBrushPreview();
-    updateStats();
 }
 
-function drawParticles() {
-    particleCount = 0;
-    waterCount = 0;
-    wallCount = 0;
-    noStroke();
-    for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-            if (grid[i][j] === -1) {
-                wallCount++;
-                fill(214, 14, 110);
-                rect(i * w, j * w, w + 0.2, w + 0.2, 1);
-            } else if (grid[i][j] === -2) {
-                waterCount++;
-                let shade = 178 + noise(i * 0.08, j * 0.08, frameCount * 0.02) * 28;
-                fill(204, 165, shade, 195);
-                rect(i * w, j * w, w + 0.5, w + 0.5, 1);
-            } else if (grid[i][j] > 0) {
-                particleCount++;
-                let shade = 205 + noise(i * 0.06, j * 0.06, frameCount * 0.006) * 42;
-                fill(grid[i][j], 190, shade);
-                rect(i * w, j * w, w + 0.25, w + 0.25, 1);
-            }
-        }
+function drawCell(cell, col, row) {
+    let x = col * CELL_SIZE;
+    let y = row * CELL_SIZE;
+
+    if (cell.type === WALL) {
+        fill(214, 14, 110);
+        rect(x, y, CELL_SIZE + 0.2, CELL_SIZE + 0.2, 1);
+    } else if (cell.type === WATER) {
+        let shade = 178 + noise(col * 0.08, row * 0.08, frameCount * 0.02) * 28;
+        fill(204, 165, shade, 195);
+        rect(x, y, CELL_SIZE + 0.5, CELL_SIZE + 0.5, 1);
+    } else if (cell.type === SAND) {
+        let shade = 205 + noise(col * 0.06, row * 0.06, frameCount * 0.006) * 42;
+        fill(cell.hue, 190, shade);
+        rect(x, y, CELL_SIZE + 0.25, CELL_SIZE + 0.25, 1);
     }
 }
 
 function updateGrid() {
-    let nextGrid = make2DArray(cols, rows);
+    let nextGrid = makeGrid(cols, rows);
 
-    for (let j = rows - 1; j >= 0; j--) {
-        let leftToRight = (frameCount + j) % 2 === 0;
+    for (let row = rows - 1; row >= 0; row--) {
+        let leftToRight = (frameCount + row) % 2 === 0;
         let start = leftToRight ? 0 : cols - 1;
         let end = leftToRight ? cols : -1;
         let step = leftToRight ? 1 : -1;
 
-        for (let i = start; i !== end; i += step) {
-            let state = grid[i][j];
-            if (nextGrid[i][j] !== 0) {
-                continue;
-            }
-            if (state === -1) {
-                nextGrid[i][j] = state;
-                continue;
-            }
-            if (state === -2) {
-                updateWaterCell(i, j, nextGrid);
-                continue;
-            }
-            if (state <= 0) {
+        for (let col = start; col !== end; col += step) {
+            if (nextGrid[col][row].type !== EMPTY) {
                 continue;
             }
 
-            if (!withinRows(j + 1)) {
-                nextGrid[i][j] = state;
-                continue;
-            }
-
-            updateSandCell(i, j, state, nextGrid);
+            updateCell(col, row, nextGrid);
         }
     }
 
     grid = nextGrid;
 }
 
-function updateSandCell(i, j, state, nextGrid) {
-    if (tryMoveSandTo(i, j, i, j + 1, state, nextGrid)) {
+function updateCell(col, row, nextGrid) {
+    let cell = grid[col][row];
+
+    if (cell.type === WALL) {
+        setNext(nextGrid, col, row, cell);
+    } else if (cell.type === WATER) {
+        updateWater(col, row, nextGrid);
+    } else if (cell.type === SAND) {
+        updateSand(col, row, cell, nextGrid);
+    }
+}
+
+function updateSand(col, row, cell, nextGrid) {
+    if (tryMoveSand(col, row, col, row + 1, cell, nextGrid)) {
         return;
     }
 
     let firstDir = random(1) < 0.5 ? -1 : 1;
-    if (tryMoveSandTo(i, j, i + firstDir, j + 1, state, nextGrid)) {
+    if (tryMoveSand(col, row, col + firstDir, row + 1, cell, nextGrid)) {
         return;
     }
-    if (tryMoveSandTo(i, j, i - firstDir, j + 1, state, nextGrid)) {
+    if (tryMoveSand(col, row, col - firstDir, row + 1, cell, nextGrid)) {
         return;
     }
 
-    nextGrid[i][j] = state;
+    setNext(nextGrid, col, row, cell);
 }
 
-function tryMoveSandTo(fromCol, fromRow, toCol, toRow, state, nextGrid) {
-    if (!withinCols(toCol) || !withinRows(toRow)) {
+function tryMoveSand(fromCol, fromRow, toCol, toRow, cell, nextGrid) {
+    if (!insideGrid(toCol, toRow)) {
         return false;
     }
 
     let target = grid[toCol][toRow];
-    if (target === 0 && nextGrid[toCol][toRow] === 0) {
-        nextGrid[toCol][toRow] = state;
+    let nextTarget = nextGrid[toCol][toRow];
+    if (target.type === EMPTY && nextTarget.type === EMPTY) {
+        setNext(nextGrid, toCol, toRow, cell);
         return true;
     }
 
-    if (target === -2 && (nextGrid[toCol][toRow] === 0 || nextGrid[toCol][toRow] === -2)) {
-        nextGrid[toCol][toRow] = state;
-        if (nextGrid[fromCol][fromRow] === 0) {
-            nextGrid[fromCol][fromRow] = -2;
+    if (target.type === WATER && (nextTarget.type === EMPTY || nextTarget.type === WATER)) {
+        setNext(nextGrid, toCol, toRow, cell);
+        if (nextGrid[fromCol][fromRow].type === EMPTY) {
+            setNext(nextGrid, fromCol, fromRow, target);
         }
         return true;
     }
@@ -379,50 +413,43 @@ function tryMoveSandTo(fromCol, fromRow, toCol, toRow, state, nextGrid) {
     return false;
 }
 
-function updateWaterCell(i, j, nextGrid) {
-    if (!withinRows(j + 1)) {
-        nextGrid[i][j] = -2;
-        return;
-    }
-
-    if (canMoveTo(i, j + 1, nextGrid)) {
-        nextGrid[i][j + 1] = -2;
+function updateWater(col, row, nextGrid) {
+    if (tryMoveWater(col, row, col, row + 1, nextGrid)) {
         return;
     }
 
     let firstDir = random(1) < 0.5 ? -1 : 1;
-    if (canMoveTo(i + firstDir, j + 1, nextGrid)) {
-        nextGrid[i + firstDir][j + 1] = -2;
+    if (tryMoveWater(col, row, col + firstDir, row + 1, nextGrid)) {
         return;
     }
-    if (canMoveTo(i - firstDir, j + 1, nextGrid)) {
-        nextGrid[i - firstDir][j + 1] = -2;
+    if (tryMoveWater(col, row, col - firstDir, row + 1, nextGrid)) {
+        return;
+    }
+    if (tryMoveWater(col, row, col + firstDir, row, nextGrid)) {
+        return;
+    }
+    if (tryMoveWater(col, row, col - firstDir, row, nextGrid)) {
         return;
     }
 
-    if (tryMoveWaterSide(i, j, firstDir, nextGrid) || tryMoveWaterSide(i, j, -firstDir, nextGrid)) {
-        return;
-    }
-
-    nextGrid[i][j] = -2;
+    setNext(nextGrid, col, row, grid[col][row]);
 }
 
-function tryMoveWaterSide(i, j, dir, nextGrid) {
-    let col = i + dir;
-    if (!canMoveTo(col, j, nextGrid)) {
+function tryMoveWater(fromCol, fromRow, toCol, toRow, nextGrid) {
+    if (!insideGrid(toCol, toRow) || !cellIsEmpty(toCol, toRow, nextGrid)) {
         return false;
     }
 
-    nextGrid[col][j] = -2;
+    setNext(nextGrid, toCol, toRow, grid[fromCol][fromRow]);
     return true;
 }
 
-function canMoveTo(i, j, nextGrid) {
-    if (!withinCols(i) || !withinRows(j)) {
-        return false;
-    }
+function cellIsEmpty(col, row, nextGrid) {
+    return grid[col][row].type === EMPTY && nextGrid[col][row].type === EMPTY;
+}
 
-    return grid[i][j] === 0 && nextGrid[i][j] === 0;
+function setNext(nextGrid, col, row, cell) {
+    nextGrid[col][row] = makeCell(cell.type, cell.hue);
 }
 
 function drawBrushPreview() {
@@ -441,14 +468,18 @@ function drawBrushPreview() {
         stroke(hueValue, 200, 255, 170);
     }
     strokeWeight(2);
-    circle(mouseX, mouseY, brushSize * w);
+    circle(mouseX, mouseY, brushSize * CELL_SIZE);
     noStroke();
 }
 
+function resetCounts() {
+    counts[SAND] = 0;
+    counts[WATER] = 0;
+    counts[WALL] = 0;
+}
+
 function updateStats() {
-    if (particleCountEl) {
-        particleCountEl.innerHTML = `${particleCount} sand<br>${waterCount} water<br>${wallCount} walls`;
-    }
+    ui.stats.innerHTML = `${counts[SAND]} sand<br>${counts[WATER]} water<br>${counts[WALL]} walls`;
 }
 
 function pointerInCanvas() {
@@ -456,13 +487,13 @@ function pointerInCanvas() {
 }
 
 function pointerOverToolbar(event) {
-    if (!toolbar) {
+    if (!ui.toolbar) {
         return false;
     }
     if (event && event.target && event.target.closest && event.target.closest("#toolbar")) {
         return true;
     }
-    let bounds = toolbar.getBoundingClientRect();
+    let bounds = ui.toolbar.getBoundingClientRect();
     return mouseX >= bounds.left && mouseX <= bounds.right && mouseY >= bounds.top && mouseY <= bounds.bottom;
 }
 
@@ -471,17 +502,15 @@ function windowResized() {
     let oldCols = cols;
     let oldRows = rows;
 
-    resizeCanvas(getViewportWidth(), getViewportHeight());
-    cols = floor(width / w);
-    rows = floor(height / w);
-    grid = make2DArray(cols, rows);
+    resizeCanvas(viewportWidth(), viewportHeight());
+    resetGrid();
 
-    for (let i = 0; i < min(cols, oldCols); i++) {
-        for (let j = 0; j < min(rows, oldRows); j++) {
-            grid[i][j] = oldGrid[i][j];
+    for (let col = 0; col < min(cols, oldCols); col++) {
+        for (let row = 0; row < min(rows, oldRows); row++) {
+            grid[col][row] = oldGrid[col][row];
         }
     }
 
-    let bounds = toolbar.getBoundingClientRect();
+    let bounds = ui.toolbar.getBoundingClientRect();
     moveToolbar(bounds.left, bounds.top);
 }
