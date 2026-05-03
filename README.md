@@ -2,7 +2,7 @@
 
 [Click to try](https://huiishan99.github.io/web-falling-sand/)
 
-A small p5.js falling-sand sandbox with sand, water, walls, brush controls, pause/step, and a draggable UI panel.
+A small p5.js falling-sand sandbox with sand, water, walls, source blocks, brush controls, pause/step, screenshot saving, and a draggable UI panel.
 
 ## Files
 
@@ -16,7 +16,9 @@ A small p5.js falling-sand sandbox with sand, water, walls, brush controls, paus
 - `1` Sand
 - `2` Water
 - `3` Wall
-- `4` Erase
+- `4` Sand Source
+- `5` Water Source
+- `6` Erase
 - `Space` Pause or resume
 - `C` Clear
 

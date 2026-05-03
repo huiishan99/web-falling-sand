@@ -3,11 +3,15 @@ const EMPTY = 0;
 const WALL = 1;
 const WATER = 2;
 const SAND = 3;
+const SAND_SOURCE = 4;
+const WATER_SOURCE = 5;
 
 const TOOLS = {
     sand: SAND,
     water: WATER,
     wall: WALL,
+    sandSource: SAND_SOURCE,
+    waterSource: WATER_SOURCE,
     erase: EMPTY
 };
 
@@ -15,7 +19,9 @@ const MATERIALS = {
     [EMPTY]: { name: "empty" },
     [WALL]: { name: "wall" },
     [WATER]: { name: "water" },
-    [SAND]: { name: "sand" }
+    [SAND]: { name: "sand" },
+    [SAND_SOURCE]: { name: "sand source" },
+    [WATER_SOURCE]: { name: "water source" }
 };
 
 let grid;
@@ -32,7 +38,8 @@ let simulationSpeed = 1;
 let counts = {
     [SAND]: 0,
     [WATER]: 0,
-    [WALL]: 0
+    [WALL]: 0,
+    sources: 0
 };
 
 let ui = {};
@@ -148,6 +155,10 @@ function setupControlInputs() {
         updateGrid();
     });
 
+    document.getElementById("save-canvas").addEventListener("click", () => {
+        saveCanvas("falling-sand", "png");
+    });
+
     document.getElementById("clear-grid").addEventListener("click", () => {
         resetGrid();
         resetCounts();
@@ -244,6 +255,10 @@ function keyPressed() {
     } else if (key === "3") {
         selectTool("wall");
     } else if (key === "4") {
+        selectTool("sandSource");
+    } else if (key === "5") {
+        selectTool("waterSource");
+    } else if (key === "6") {
         selectTool("erase");
     }
 }
@@ -318,6 +333,9 @@ function drawCells() {
             }
 
             counts[cell.type]++;
+            if (cell.type === SAND_SOURCE || cell.type === WATER_SOURCE) {
+                counts.sources++;
+            }
             drawCell(cell, col, row);
         }
     }
@@ -338,6 +356,16 @@ function drawCell(cell, col, row) {
         let shade = 205 + noise(col * 0.06, row * 0.06, frameCount * 0.006) * 42;
         fill(cell.hue, 190, shade);
         rect(x, y, CELL_SIZE + 0.25, CELL_SIZE + 0.25, 1);
+    } else if (cell.type === SAND_SOURCE) {
+        fill(42, 205, 245);
+        rect(x, y, CELL_SIZE + 0.5, CELL_SIZE + 0.5, 1);
+        fill(0, 0, 30, 150);
+        rect(x + 1, y + 1, CELL_SIZE - 2, CELL_SIZE - 2, 1);
+    } else if (cell.type === WATER_SOURCE) {
+        fill(204, 180, 240);
+        rect(x, y, CELL_SIZE + 0.5, CELL_SIZE + 0.5, 1);
+        fill(0, 0, 30, 150);
+        rect(x + 1, y + 1, CELL_SIZE - 2, CELL_SIZE - 2, 1);
     }
 }
 
@@ -367,11 +395,37 @@ function updateCell(col, row, nextGrid) {
 
     if (cell.type === WALL) {
         setNext(nextGrid, col, row, cell);
+    } else if (cell.type === SAND_SOURCE || cell.type === WATER_SOURCE) {
+        updateSource(col, row, cell, nextGrid);
     } else if (cell.type === WATER) {
         updateWater(col, row, nextGrid);
     } else if (cell.type === SAND) {
         updateSand(col, row, cell, nextGrid);
     }
+}
+
+function updateSource(col, row, cell, nextGrid) {
+    setNext(nextGrid, col, row, cell);
+
+    let product = cell.type === SAND_SOURCE ? makeCell(SAND, getBrushHue()) : makeCell(WATER);
+    if (tryEmitFromSource(col, row + 1, product, nextGrid)) {
+        return;
+    }
+
+    let firstDir = random(1) < 0.5 ? -1 : 1;
+    if (tryEmitFromSource(col + firstDir, row, product, nextGrid)) {
+        return;
+    }
+    tryEmitFromSource(col - firstDir, row, product, nextGrid);
+}
+
+function tryEmitFromSource(col, row, product, nextGrid) {
+    if (!insideGrid(col, row) || !cellIsEmpty(col, row, nextGrid)) {
+        return false;
+    }
+
+    setNext(nextGrid, col, row, product);
+    return true;
 }
 
 function updateSand(col, row, cell, nextGrid) {
@@ -464,6 +518,10 @@ function drawBrushPreview() {
         stroke(205, 185, 235, 170);
     } else if (currentTool === "wall") {
         stroke(214, 18, 190, 170);
+    } else if (currentTool === "sandSource") {
+        stroke(42, 205, 245, 190);
+    } else if (currentTool === "waterSource") {
+        stroke(204, 180, 240, 190);
     } else {
         stroke(hueValue, 200, 255, 170);
     }
@@ -476,10 +534,13 @@ function resetCounts() {
     counts[SAND] = 0;
     counts[WATER] = 0;
     counts[WALL] = 0;
+    counts[SAND_SOURCE] = 0;
+    counts[WATER_SOURCE] = 0;
+    counts.sources = 0;
 }
 
 function updateStats() {
-    ui.stats.innerHTML = `${counts[SAND]} sand<br>${counts[WATER]} water<br>${counts[WALL]} walls`;
+    ui.stats.innerHTML = `${counts[SAND]} sand<br>${counts[WATER]} water<br>${counts[WALL]} walls<br>${counts.sources} sources`;
 }
 
 function pointerInCanvas() {
