@@ -6,10 +6,29 @@ A small p5.js falling-sand sandbox with sand, water, walls, source blocks, brush
 
 ## Files
 
-- `index.html` - page structure and toolbar markup
+- `index.html` - page shell and toolbar containers
 - `style.css` - layout and UI styling
-- `sketch.js` - p5 setup, drawing, input, and simulation rules
+- `src/` - modular app code
+  - `main.js` - p5 lifecycle and app wiring
+  - `materials.js` - data-driven materials and tools
+  - `grid.js` - typed-array grid storage
+  - `simulation.js` - material update rules
+  - `renderer.js` - p5 drawing and offscreen buffer
+  - `input.js` - brush painting input
+  - `ui.js` - generated controls and draggable toolbar
 - `p5.js` - local p5 runtime
+- `public/p5.js` - p5 runtime copied into Vite builds
+- `.github/workflows/pages.yml` - GitHub Pages deployment workflow
+
+## Development
+
+```bash
+npm install
+npm run dev
+npm test
+npm run lint
+npm run build
+```
 
 ## Shortcuts
 

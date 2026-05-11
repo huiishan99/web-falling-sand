@@ -1,62 +1,48 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Falling Sand</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="p5.js"></script>
+    <script type="module" src="src/main.js"></script>
+  </head>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Falling Sand</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="p5.js"></script>
-  <!-- <script src="../addons/p5.sound.js"></script> -->
-  <script src="sketch.js"></script>
-</head>
-
-<body>
-  <div class="toolbar" id="toolbar">
-    <div class="brand">
-      <div class="brand-title">Falling Sand</div>
-      <div class="brand-mark">p5</div>
-    </div>
-    <div class="toolbar-group" role="group" aria-label="Tools">
-      <div class="section-label">Tool</div>
-      <div class="button-grid">
-        <button class="active" type="button" data-tool="sand" title="Sand">Sand</button>
-        <button type="button" data-tool="water" title="Water">Water</button>
-        <button type="button" data-tool="wall" title="Wall">Wall</button>
-        <button type="button" data-tool="sandSource" title="Sand Source">S Source</button>
-        <button type="button" data-tool="waterSource" title="Water Source">W Source</button>
-        <button type="button" data-tool="erase" title="Eraser">Erase</button>
+  <body>
+    <div class="toolbar" id="toolbar">
+      <div class="brand" data-drag-handle>
+        <div class="brand-title">Falling Sand</div>
+        <div class="brand-mark">p5</div>
+      </div>
+      <div class="toolbar-group" role="group" aria-label="Tools">
+        <div class="section-label">Tool</div>
+        <div class="button-grid" id="tool-buttons"></div>
+      </div>
+      <div class="toolbar-group" role="group" aria-label="Colors">
+        <div class="section-label">Color</div>
+        <div class="button-grid" id="color-buttons"></div>
+      </div>
+      <div class="toolbar-group">
+        <label for="brush-size">Size <span id="brush-size-value">5</span></label>
+        <input id="brush-size" type="range" min="1" max="19" step="2" value="5" />
+      </div>
+      <div class="toolbar-group">
+        <label for="sim-speed">Speed <span id="sim-speed-value">1x</span></label>
+        <input id="sim-speed" type="range" min="1" max="4" step="1" value="1" />
+      </div>
+      <div class="toolbar-group">
+        <div class="button-grid">
+          <button id="pause-toggle" type="button" title="Pause">Pause</button>
+          <button id="step-grid" type="button" title="Step one frame">Step</button>
+          <button id="save-canvas" type="button" title="Save screenshot">Save</button>
+          <button id="clear-grid" type="button" title="Clear">Clear</button>
+        </div>
+      </div>
+      <div class="toolbar-group">
+        <div class="stat" id="particle-count">0 sand<br />0 water<br />0 walls<br />0 sources</div>
       </div>
     </div>
-    <div class="toolbar-group" role="group" aria-label="Colors">
-      <div class="section-label">Color</div>
-      <div class="button-grid">
-        <button class="active" type="button" data-color-mode="rainbow" title="Rainbow colors">Rainbow</button>
-        <button type="button" data-color-mode="warm" title="Warm sand colors">Warm</button>
-      </div>
-    </div>
-    <div class="toolbar-group">
-      <label for="brush-size">Size <span id="brush-size-value">5</span></label>
-      <input id="brush-size" type="range" min="1" max="19" step="2" value="5">
-    </div>
-    <div class="toolbar-group">
-      <label for="sim-speed">Speed <span id="sim-speed-value">1x</span></label>
-      <input id="sim-speed" type="range" min="1" max="4" step="1" value="1">
-    </div>
-    <div class="toolbar-group">
-      <div class="button-grid">
-        <button id="pause-toggle" type="button" title="Pause">Pause</button>
-        <button id="step-grid" type="button" title="Step one frame">Step</button>
-        <button id="save-canvas" type="button" title="Save screenshot">Save</button>
-        <button id="clear-grid" class="wide" type="button" title="Clear">Clear</button>
-      </div>
-    </div>
-    <div class="toolbar-group">
-      <div class="stat" id="particle-count">0 sand<br>0 water<br>0 walls<br>0 sources</div>
-    </div>
-  </div>
-  <main id="canvas-host">
-  </main>
-</body>
-
+    <main id="canvas-host"></main>
+  </body>
 </html>
