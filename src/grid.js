@@ -7,6 +7,27 @@ export class Grid {
     this.size = cols * rows;
     this.types = new Uint8Array(this.size);
     this.hues = new Uint16Array(this.size);
+    this.resetBounds();
+  }
+
+  resetBounds() {
+    this.minCol = this.cols;
+    this.maxCol = -1;
+    this.minRow = this.rows;
+    this.maxRow = -1;
+  }
+
+  include(col, row) {
+    this.minCol = Math.min(this.minCol, col);
+    this.maxCol = Math.max(this.maxCol, col);
+    this.minRow = Math.min(this.minRow, row);
+    this.maxRow = Math.max(this.maxRow, row);
+  }
+
+  reset() {
+    this.types.fill(0);
+    this.hues.fill(0);
+    this.resetBounds();
   }
 
   index(col, row) {
@@ -37,6 +58,7 @@ export class Grid {
     let index = this.index(col, row);
     this.types[index] = type;
     this.hues[index] = hue;
+    if (type !== MATERIAL.EMPTY) this.include(col, row);
     return true;
   }
 
@@ -49,6 +71,7 @@ export class Grid {
     let targetIndex = this.index(toCol, toRow);
     this.types[targetIndex] = source.types[sourceIndex];
     this.hues[targetIndex] = source.hues[sourceIndex];
+    if (this.types[targetIndex] !== MATERIAL.EMPTY) this.include(toCol, toRow);
   }
 
   cloneCell(col, row) {
@@ -69,6 +92,7 @@ export class Grid {
         let nextIndex = this.index(col, row);
         this.types[nextIndex] = oldGrid.types[oldIndex];
         this.hues[nextIndex] = oldGrid.hues[oldIndex];
+        if (this.types[nextIndex] !== MATERIAL.EMPTY) this.include(col, row);
       }
     }
   }

@@ -164,3 +164,118 @@ input[type="range"] {
     overflow: auto;
   }
 }
+
+.toolbar {
+  width: 224px;
+  max-height: calc(100dvh - 28px);
+  overflow: hidden;
+  gap: 10px;
+}
+.brand {
+  align-items: center;
+  padding-bottom: 8px;
+}
+.brand-title {
+  font-size: 12px;
+}
+#toolbar-toggle {
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+#toolbar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+#toolbar-content[hidden] {
+  display: none;
+}
+.quick-controls {
+  display: none;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.collapsed .quick-controls {
+  display: grid;
+}
+#scene-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+.collapsed #scene-status {
+  display: none;
+}
+#fps {
+  color: var(--muted);
+  font-size: 10px;
+}
+select {
+  width: 100%;
+  min-height: 36px;
+  background: var(--surface-soft);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 5px;
+  font: inherit;
+  font-size: 12px;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#canvas-host canvas {
+  touch-action: none;
+}
+@media (max-width: 620px) {
+  .toolbar {
+    width: auto;
+    max-height: 55dvh;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: 8px;
+    right: 8px;
+    top: auto;
+    padding: 10px 12px;
+  }
+  .brand {
+    cursor: default;
+  }
+  .quick-controls {
+    display: grid;
+  }
+  .toolbar button,
+  .toolbar select {
+    min-height: 44px;
+  }
+  .button-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .toolbar input[type="range"] {
+    min-height: 36px;
+    touch-action: pan-x;
+  }
+  #toolbar-content {
+    gap: 12px;
+  }
+  #scene-status {
+    max-height: 4.5em;
+    overflow-y: auto;
+    touch-action: pan-y;
+  }
+}

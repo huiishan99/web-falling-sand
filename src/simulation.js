@@ -9,12 +9,17 @@ export class Simulation {
   }
 
   step(grid) {
-    let nextGrid = new Grid(grid.cols, grid.rows);
+    let nextGrid = this.spare;
+    if (!nextGrid || nextGrid === grid || nextGrid.cols !== grid.cols || nextGrid.rows !== grid.rows) {
+      nextGrid = new Grid(grid.cols, grid.rows);
+    } else {
+      nextGrid.reset();
+    }
 
-    for (let row = grid.rows - 1; row >= 0; row--) {
+    for (let row = grid.maxRow; row >= grid.minRow; row--) {
       let leftToRight = (this.p.frameCount + row) % 2 === 0;
-      let start = leftToRight ? 0 : grid.cols - 1;
-      let end = leftToRight ? grid.cols : -1;
+      let start = leftToRight ? grid.minCol : grid.maxCol;
+      let end = leftToRight ? grid.maxCol + 1 : grid.minCol - 1;
       let step = leftToRight ? 1 : -1;
 
       for (let col = start; col !== end; col += step) {
@@ -26,6 +31,8 @@ export class Simulation {
       }
     }
 
+    // Callers needing a persistent snapshot must copy it before another step.
+    this.spare = grid;
     return nextGrid;
   }
 

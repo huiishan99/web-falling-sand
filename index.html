@@ -13,35 +13,63 @@
     <div class="toolbar" id="toolbar">
       <div class="brand" data-drag-handle>
         <div class="brand-title">Falling Sand</div>
-        <div class="brand-mark">p5</div>
+        <button id="toolbar-toggle" type="button" aria-expanded="true" aria-controls="toolbar-content">
+          Hide
+        </button>
       </div>
-      <div class="toolbar-group" role="group" aria-label="Tools">
-        <div class="section-label">Tool</div>
-        <div class="button-grid" id="tool-buttons"></div>
+      <div class="quick-controls">
+        <span id="current-tool">Sand</span>
+        <button id="quick-pause" type="button">Pause</button>
+        <button id="quick-undo" type="button">Undo</button>
       </div>
-      <div class="toolbar-group" role="group" aria-label="Colors">
-        <div class="section-label">Color</div>
-        <div class="button-grid" id="color-buttons"></div>
-      </div>
-      <div class="toolbar-group">
-        <label for="brush-size">Size <span id="brush-size-value">5</span></label>
-        <input id="brush-size" type="range" min="1" max="19" step="2" value="5" />
-      </div>
-      <div class="toolbar-group">
-        <label for="sim-speed">Speed <span id="sim-speed-value">1x</span></label>
-        <input id="sim-speed" type="range" min="1" max="4" step="1" value="1" />
-      </div>
-      <div class="toolbar-group">
-        <div class="button-grid">
-          <button id="pause-toggle" type="button" title="Pause">Pause</button>
-          <button id="step-grid" type="button" title="Step one frame">Step</button>
-          <button id="save-canvas" type="button" title="Save screenshot">Save</button>
-          <button id="clear-grid" type="button" title="Clear">Clear</button>
+      <div id="toolbar-content">
+        <div class="toolbar-group" role="group" aria-label="Tools">
+          <div class="section-label">Tool</div>
+          <div class="button-grid" id="tool-buttons"></div>
+        </div>
+        <div class="toolbar-group" role="group" aria-label="Colors">
+          <div class="section-label">Color</div>
+          <div class="button-grid" id="color-buttons"></div>
+        </div>
+        <div class="toolbar-group">
+          <label for="brush-size">Size <span id="brush-size-value">5</span></label>
+          <input id="brush-size" type="range" min="1" max="19" step="2" value="5" />
+        </div>
+        <div class="toolbar-group">
+          <label for="sim-speed">Speed <span id="sim-speed-value">1x</span></label>
+          <input id="sim-speed" type="range" min="1" max="4" step="1" value="1" />
+        </div>
+        <div class="toolbar-group">
+          <div class="button-grid">
+            <button id="pause-toggle" type="button" title="Pause">Pause</button>
+            <button id="step-grid" type="button" title="Step one frame">Step</button>
+            <button id="save-canvas" type="button" title="Save screenshot">PNG</button>
+            <button id="clear-grid" type="button" title="Clear">Clear</button>
+            <button id="undo" type="button" title="Undo (Ctrl/Cmd+Z)">Undo</button>
+            <button id="redo" type="button" title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
+          </div>
+        </div>
+        <div class="toolbar-group">
+          <label for="preset-select">Scenes</label>
+          <select id="preset-select"></select>
+          <button id="load-preset" type="button">Load preset</button>
+        </div>
+        <div class="toolbar-group">
+          <div class="section-label">Your scene</div>
+          <div class="button-grid">
+            <button id="save-scene" type="button">Save local</button>
+            <button id="load-scene" type="button">Load local</button>
+            <button id="export-scene" type="button">Export JSON</button>
+            <button id="import-scene" type="button">Import JSON</button>
+          </div>
+          <input id="scene-file" type="file" accept=".json,application/json" hidden />
+        </div>
+        <div class="toolbar-group">
+          <div class="stat" id="particle-count">0 sand<br />0 water<br />0 walls<br />0 sources</div>
+          <span id="fps">— fps</span>
         </div>
       </div>
-      <div class="toolbar-group">
-        <div class="stat" id="particle-count">0 sand<br />0 water<br />0 walls<br />0 sources</div>
-      </div>
+      <p id="scene-status" role="status" aria-live="polite"></p>
     </div>
     <main id="canvas-host"></main>
   </body>

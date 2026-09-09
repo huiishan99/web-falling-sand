@@ -1,5 +1,6 @@
 import { COLOR_MODES } from "./constants.js";
 import { TOOLS } from "./materials.js";
+import { PRESETS } from "./presets.js";
 
 export class UIController {
   constructor(state, handlers) {
@@ -25,6 +26,8 @@ export class UIController {
     this.renderColorButtons();
     this.setupControls();
     this.setupDrag();
+    this.setupSceneControls();
+    this.setCollapsed(window.matchMedia("(max-width: 620px)").matches);
     this.sync();
   }
 
@@ -72,6 +75,7 @@ export class UIController {
   setupDrag() {
     let handle = this.toolbar.querySelector("[data-drag-handle]");
     handle.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("button") || window.matchMedia("(max-width: 620px)").matches) return;
       let bounds = this.toolbar.getBoundingClientRect();
       this.drag = {
         offsetX: event.clientX - bounds.left,
@@ -112,6 +116,10 @@ export class UIController {
   }
 
   keepToolbarInBounds() {
+    if (window.matchMedia("(max-width: 620px)").matches) {
+      this.toolbar.removeAttribute("style");
+      return;
+    }
     let bounds = this.toolbar.getBoundingClientRect();
     this.moveToolbar(bounds.left, bounds.top);
   }
@@ -130,6 +138,10 @@ export class UIController {
     this.elements.speedInput.value = String(this.state.simulationSpeed);
     this.elements.speedValue.textContent = `${this.state.simulationSpeed}x`;
     this.elements.pauseButton.textContent = this.state.paused ? "Resume" : "Pause";
+    document.getElementById("quick-pause").textContent = this.state.paused ? "Resume" : "Pause";
+    document.getElementById("current-tool").textContent = TOOLS.find(
+      (tool) => tool.id === this.state.currentTool
+    )?.label;
 
     this.setActive("[data-tool]", this.state.currentTool, "tool");
     this.setActive("[data-color-mode]", this.state.colorMode, "colorMode");
@@ -146,7 +158,62 @@ export class UIController {
   setActive(selector, activeId, dataName) {
     document.querySelectorAll(selector).forEach((button) => {
       button.classList.toggle("active", button.dataset[dataName] === activeId);
+      button.setAttribute("aria-pressed", String(button.dataset[dataName] === activeId));
     });
+  }
+
+  setupSceneControls() {
+    let select = document.getElementById("preset-select");
+    PRESETS.forEach((preset) => {
+      let option = document.createElement("option");
+      option.value = preset.id;
+      option.textContent = preset.label;
+      select.append(option);
+    });
+    document
+      .getElementById("load-preset")
+      .addEventListener("click", () => this.handlers.preset(select.value));
+    for (let [id, action] of [
+      ["undo", "undo"],
+      ["redo", "redo"],
+      ["quick-undo", "undo"],
+      ["quick-pause", "togglePaused"],
+      ["save-scene", "saveScene"],
+      ["load-scene", "loadScene"],
+      ["export-scene", "exportScene"]
+    ]) {
+      document.getElementById(id).addEventListener("click", this.handlers[action]);
+    }
+    let fileInput = document.getElementById("scene-file");
+    document.getElementById("import-scene").addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      this.handlers.importScene(fileInput.files[0]);
+      fileInput.value = "";
+    });
+    document.getElementById("toolbar-toggle").addEventListener("click", () => {
+      this.setCollapsed(!this.toolbar.classList.contains("collapsed"));
+      this.keepToolbarInBounds();
+    });
+  }
+
+  setCollapsed(collapsed) {
+    this.toolbar.classList.toggle("collapsed", collapsed);
+    let button = document.getElementById("toolbar-toggle");
+    button.textContent = collapsed ? "Tools" : "Hide";
+    button.setAttribute("aria-expanded", String(!collapsed));
+    document.getElementById("toolbar-content").hidden = collapsed;
+  }
+
+  updateHistory(history) {
+    for (let id of ["undo", "quick-undo"]) document.getElementById(id).disabled = !history.past.length;
+    document.getElementById("redo").disabled = !history.future.length;
+  }
+
+  announce(message) {
+    document.getElementById("scene-status").textContent = message;
+  }
+  updatePerformance(fps) {
+    document.getElementById("fps").textContent = `${Math.round(fps)} fps`;
   }
 }
 

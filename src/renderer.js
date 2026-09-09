@@ -4,86 +4,55 @@ export class Renderer {
   constructor(p) {
     this.p = p;
     this.buffer = null;
+    this.palette = Array.from({ length: 361 }, (_, hue) => p.color(hue, 190, 235).levels);
+    this.colors = {
+      [MATERIAL.EMPTY]: [11, 13, 16, 255],
+      [MATERIAL.WALL]: [92, 101, 115, 255],
+      [MATERIAL.WATER]: [45, 123, 184, 255],
+      [MATERIAL.SAND_SOURCE]: [245, 186, 48, 255],
+      [MATERIAL.WATER_SOURCE]: [52, 202, 242, 255]
+    };
   }
-
+  invalidate() {
+    this.invalid = true;
+  }
   resize(width, height) {
     this.buffer?.remove();
-    this.buffer = this.p.createGraphics(width, height);
-    this.buffer.colorMode(this.p.HSB, 360, 255, 255, 255);
-    this.buffer.noStroke();
+    this.buffer = this.p.createGraphics(
+      Math.max(1, Math.floor(width / CELL_SIZE)),
+      Math.max(1, Math.floor(height / CELL_SIZE))
+    );
+    this.buffer.pixelDensity(1);
+    this.buffer.loadPixels();
+    this.invalid = true;
   }
-
   draw(grid, state) {
-    if (!this.buffer || this.buffer.width !== this.p.width || this.buffer.height !== this.p.height) {
-      this.resize(this.p.width, this.p.height);
-    }
-
-    this.buffer.background(218, 28, 7);
-    this.buffer.noStroke();
-
-    for (let row = 0; row < grid.rows; row++) {
-      for (let col = 0; col < grid.cols; col++) {
-        let type = grid.typeAt(col, row);
-        if (type === MATERIAL.EMPTY) {
-          continue;
-        }
-        this.drawCell(grid, col, row, type);
+    if (this.invalid || state.dirty) {
+      let pixels = this.buffer.pixels;
+      for (let i = 0; i < grid.size; i++) {
+        let type = grid.types[i];
+        let color = type === MATERIAL.SAND ? this.palette[grid.hues[i] % 361] : this.colors[type];
+        let shade = type === MATERIAL.SAND ? 0.88 + ((i * 13) % 17) / 140 : 1;
+        let offset = i * 4;
+        pixels[offset] = color[0] * shade;
+        pixels[offset + 1] = color[1] * shade;
+        pixels[offset + 2] = color[2] * shade;
+        pixels[offset + 3] = 255;
       }
+      this.buffer.updatePixels();
+      this.invalid = false;
     }
-
-    this.p.image(this.buffer, 0, 0);
+    this.p.background("#0b0d10");
+    this.p.noSmooth();
+    this.p.image(this.buffer, 0, 0, grid.cols * CELL_SIZE, grid.rows * CELL_SIZE);
     this.drawBrushPreview(state);
   }
-
-  drawCell(grid, col, row, type) {
-    let x = col * CELL_SIZE;
-    let y = row * CELL_SIZE;
-
-    if (type === MATERIAL.WALL) {
-      this.buffer.fill(214, 14, 110);
-      this.buffer.rect(x, y, CELL_SIZE + 0.2, CELL_SIZE + 0.2, 1);
-    } else if (type === MATERIAL.WATER) {
-      let shade = 178 + this.p.noise(col * 0.08, row * 0.08, this.p.frameCount * 0.02) * 28;
-      this.buffer.fill(204, 165, shade, 195);
-      this.buffer.rect(x, y, CELL_SIZE + 0.5, CELL_SIZE + 0.5, 1);
-    } else if (type === MATERIAL.SAND) {
-      let shade = 205 + this.p.noise(col * 0.06, row * 0.06, this.p.frameCount * 0.006) * 42;
-      this.buffer.fill(grid.hueAt(col, row), 190, shade);
-      this.buffer.rect(x, y, CELL_SIZE + 0.25, CELL_SIZE + 0.25, 1);
-    } else if (type === MATERIAL.SAND_SOURCE) {
-      this.drawSource(x, y, 42, 205, 245);
-    } else if (type === MATERIAL.WATER_SOURCE) {
-      this.drawSource(x, y, 204, 180, 240);
-    }
-  }
-
-  drawSource(x, y, hue, saturation, brightness) {
-    this.buffer.fill(hue, saturation, brightness);
-    this.buffer.rect(x, y, CELL_SIZE + 0.5, CELL_SIZE + 0.5, 1);
-    this.buffer.fill(0, 0, 30, 150);
-    this.buffer.rect(x + 1, y + 1, CELL_SIZE - 2, CELL_SIZE - 2, 1);
-  }
-
   drawBrushPreview(state) {
-    if (!state.pointerInCanvas || state.pointerOverToolbar) {
-      return;
-    }
-
+    if (!state.pointerInCanvas || state.pointerOverToolbar) return;
     this.p.noFill();
-    if (state.currentTool === "erase") {
-      this.p.stroke(0, 0, 240, 170);
-    } else if (state.currentTool === "water") {
-      this.p.stroke(205, 185, 235, 170);
-    } else if (state.currentTool === "wall") {
-      this.p.stroke(214, 18, 190, 170);
-    } else if (state.currentTool === "sandSource") {
-      this.p.stroke(42, 205, 245, 190);
-    } else if (state.currentTool === "waterSource") {
-      this.p.stroke(204, 180, 240, 190);
-    } else {
-      this.p.stroke(state.hue, 200, 255, 170);
-    }
-    this.p.strokeWeight(2);
+    let hue = state.currentTool === "water" || state.currentTool === "waterSource" ? 205 : state.hue;
+    this.p.stroke(hue, 140, 240, 200);
+    this.p.strokeWeight(1);
     this.p.circle(this.p.mouseX, this.p.mouseY, state.brushSize * CELL_SIZE);
     this.p.noStroke();
   }
