@@ -43,7 +43,9 @@ This started as a single-file p5 sketch. It is now structured more like a real a
 │  ├─ input.js         # pointer painting
 │  └─ ui.js            # toolbar controls and dragging
 ├─ test/
-│  └─ grid.test.js
+│  ├─ grid.test.js
+│  └─ simulation.test.js
+├─ vite.config.js     # relative asset paths for subdirectory hosting
 └─ .github/workflows/pages.yml
 ```
 
@@ -75,10 +77,16 @@ npm run lint
 npm run build
 ```
 
+Simulation tests cover sand/water conservation, sinking through stationary water,
+occupied flow destinations, and source emission. Seeded mixed worlds also check
+material counts, sand colors, and wall positions across 100 steps per seed.
+
 ## Deployment
 
 The repo includes a GitHub Pages workflow at `.github/workflows/pages.yml`.
 
-On push to `main`, it installs dependencies, runs tests, builds with Vite, and publishes `dist/` to GitHub Pages.
+On push to `main`, it installs dependencies, runs tests and lint, builds with Vite, and publishes `dist/` to GitHub Pages.
+
+Vite uses relative asset paths so the build works under `/web-falling-sand/` as well as a domain root.
 
 `p5.js` is kept in `public/p5.js` so Vite copies it into the production build.

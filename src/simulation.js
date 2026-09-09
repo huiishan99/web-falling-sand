@@ -109,11 +109,15 @@ export class Simulation {
 
     let movingDensity = MATERIALS[movingType].density;
     let targetDensity = MATERIALS[targetType]?.density ?? 100;
+    // Lower rows have already been updated. A particle that left the target
+    // must not be copied again; only swap water still present in the next grid.
     if (movingDensity > targetDensity && targetNextType === MATERIAL.EMPTY) {
       nextGrid.copyCellFrom(grid, fromCol, fromRow, toCol, toRow);
-      if (nextGrid.typeAt(fromCol, fromRow) === MATERIAL.EMPTY) {
-        nextGrid.copyCellFrom(grid, toCol, toRow, fromCol, fromRow);
-      }
+      return true;
+    }
+    if (movingDensity > targetDensity && targetNextType === targetType) {
+      nextGrid.copyCellFrom(nextGrid, toCol, toRow, fromCol, fromRow);
+      nextGrid.copyCellFrom(grid, fromCol, fromRow, toCol, toRow);
       return true;
     }
 
@@ -158,7 +162,7 @@ export class Simulation {
         return false;
       }
 
-      if (grid.inBounds(col, fromRow + 1) && grid.typeAt(col, fromRow + 1) === MATERIAL.EMPTY) {
+      if (this.isEmptyInBoth(grid, nextGrid, col, fromRow + 1)) {
         nextGrid.copyCellFrom(grid, fromCol, fromRow, col, fromRow + 1);
         return true;
       }

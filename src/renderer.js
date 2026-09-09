@@ -7,6 +7,7 @@ export class Renderer {
   }
 
   resize(width, height) {
+    this.buffer?.remove();
     this.buffer = this.p.createGraphics(width, height);
     this.buffer.colorMode(this.p.HSB, 360, 255, 255, 255);
     this.buffer.noStroke();

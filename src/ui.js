@@ -136,7 +136,11 @@ export class UIController {
   }
 
   updateStats(counts) {
-    this.elements.stats.innerHTML = `${counts.sand} sand<br>${counts.water} water<br>${counts.wall} walls<br>${counts.sources} sources`;
+    let markup = `${counts.sand} sand<br>${counts.water} water<br>${counts.wall} walls<br>${counts.sources} sources`;
+    if (markup !== this.lastStatsMarkup) {
+      this.elements.stats.innerHTML = markup;
+      this.lastStatsMarkup = markup;
+    }
   }
 
   setActive(selector, activeId, dataName) {
